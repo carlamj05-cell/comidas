@@ -354,7 +354,10 @@ function miniItem(id, slot, p1){
 function slotMini(s){ if (!s) return `<span class="muted">-</span>`; return (s.primero ? miniItem(s.primero, null, true) : "") + (s.plato ? miniItem(s.plato, s, false) : ""); }
 const LEYENDA = `<div class="legend">${["legumbre","pescado","blanca","roja","huevo","verdura"].map(k=>`<span style="--k:var(--c-${k})">${CATS[k]}</span>`).join("")}</div>`;
 
-function frutaMes(m){ const f = (cfg().fruta || {})[String(m+1)]; return f || null; }
+const FRUTA_DEF = {"1": {"frutas": ["Naranja", "Mandarina", "Pomelo", "Kiwi", "Pera", "Manzana", "Plátano"], "ideas": ["Naranja en rodajas con canela", "Kiwi con yogur griego y frutos secos", "Pera asada en airfryer con canela, 180 ºC 15 min"]}, "2": {"frutas": ["Naranja", "Mandarina", "Kiwi", "Pomelo", "Pera", "Fresa (a finales)"], "ideas": ["Primeras fresas con queso fresco batido", "Batido de naranja, kiwi y plátano"]}, "3": {"frutas": ["Fresa", "Naranja", "Kiwi", "Pomelo", "Plátano"], "ideas": ["Fresas en la tostada con queso fresco batido", "Bol de yogur con fresa y nueces"]}, "4": {"frutas": ["Fresa", "Níspero", "Naranja", "Kiwi", "Plátano"], "ideas": ["Nísperos de postre", "Fresas con yogur y avena"]}, "5": {"frutas": ["Fresa", "Cereza", "Níspero", "Albaricoque", "Kiwi"], "ideas": ["Cerezas en el bol de yogur", "Albaricoque asado en airfryer con miel"]}, "6": {"frutas": ["Cereza", "Albaricoque", "Melocotón", "Nectarina", "Sandía", "Melón"], "ideas": ["Melocotón a la plancha con yogur", "Sandía fría de postre"]}, "7": {"frutas": ["Sandía", "Melón", "Melocotón", "Paraguayo", "Ciruela", "Nectarina"], "ideas": ["Melón con jamón de cena ligera", "Batido de melocotón y yogur"]}, "8": {"frutas": ["Sandía", "Melón", "Higo", "Ciruela", "Uva", "Melocotón"], "ideas": ["Higos con queso fresco", "Ciruelas de merienda"]}, "9": {"frutas": ["Uva", "Higo", "Granada", "Manzana", "Pera", "Melón"], "ideas": ["Uvas y nueces en el bol de yogur", "Higos asados en airfryer"]}, "10": {"frutas": ["Granada", "Caqui", "Manzana", "Pera", "Uva", "Chirimoya", "Mandarina"], "ideas": ["Granada desgranada en un tarro para toda la semana", "Manzana asada en airfryer con canela"]}, "11": {"frutas": ["Mandarina", "Caqui", "Granada", "Kiwi", "Pera", "Manzana", "Chirimoya", "Uva"], "ideas": ["Caqui maduro a cucharadas con yogur griego y canela", "Granada desgranada en el bol de yogur", "Manzana o pera asada en airfryer: mitades con canela, 180 ºC 15 min"]}, "12": {"frutas": ["Mandarina", "Naranja", "Kiwi", "Pomelo", "Piña", "Chirimoya", "Pera", "Manzana"], "ideas": ["Piña a la airfryer, 200 ºC 8 min", "Pomelo en gajos en la ensalada", "Naranja con canela de postre"]}};
+function frutaMes(m){ const f = (cfg().fruta || FRUTA_DEF)[String(m+1)]; return f || null; }
+function planificable(dd){ return !!(dd && dd.wi && !dd.wi.antes && !dd.wi.fuera && dd.wi.sem); }
+function hayRecetas(){ return Object.values(S.data.recetas).some(r => r.tipo !== "desayuno"); }
 
 /* ---------- vistas ---------- */
 const VIEWS = {};
@@ -362,7 +365,7 @@ VIEWS.hoy = () => {
   const ds = S.ui.day, d = parse(ds), wi = weekInfo(ds), esHoy = ds === today(), i = dow(d);
   let h = `<section class="daynav"><button data-act="day" data-n="-1" aria-label="Día anterior">‹</button><div><div class="eyebrow">${esHoy ? "Hoy" : (ds < today() ? "Día pasado" : "Próximamente")}</div><h2>${fmtLargo(d)}</h2></div><button data-act="day" data-n="1" aria-label="Día siguiente">›</button></section>`;
   if (!esHoy) h += `<button class="link" data-act="day" data-n="0">Volver a hoy</button>`;
-  if (cuentaVacia()) h += `<section class="card accent"><h3>Bienvenido a COMIDAS</h3><p class="small">Tu cuenta está vacía. Si tienes un archivo de datos de COMIDAS (tuyo o que te haya pasado alguien), impórtalo y tendrás el recetario y el menú listos. También puedes empezar añadiendo platos en el Recetario.</p><div class="row"><button class="btn primary" data-act="go" data-r="cuenta">Importar datos</button><button class="btn" data-act="go" data-r="recetario">Ir al Recetario</button></div></section>`;
+  if (cuentaVacia()) h += `<section class="card accent"><h3>Bienvenido a COMIDAS</h3><p class="small">Tu cuenta está vacía. Así se empieza:</p><ol class="small"><li>Añade tus platos en el <b>Recetario</b>, con sus ingredientes.</li><li>En <b>Semana</b>, toca cada día y elige la comida y la cena.</li><li>En <b>Compra</b>, genera la lista con los ingredientes de la semana.</li><li>En <b>Más</b>, apunta lo que tienes en la despensa, tus tickets y tu presupuesto.</li></ol><div class="row"><button class="btn primary" data-act="go" data-r="recetario">Empezar por el Recetario</button><button class="btn" data-act="go" data-r="cuenta">Importar datos</button></div></section>`;
   const ini = inicio();
   if (wi.fuera){
     h += `<section class="card"><h3>Semana fuera</h3><p class="muted">${esc(wi.fuera.motivo || "Fuera de casa")} · del ${fmtCorto(parse(wi.fuera.desde))} al ${fmtCorto(parse(wi.fuera.hasta))}. No hay menú ni compra.</p></section>`;
@@ -371,11 +374,12 @@ VIEWS.hoy = () => {
     h += `<section class="card accent"><h3>Tu menú empieza el ${fmtLargo(ini).toLowerCase()}</h3><p>El ${fmtLargo(dom).toLowerCase()} toca batch cooking para la semana 1.</p><div class="row"><button class="btn primary" data-act="versem" data-s="1">Ver semana 1 y batch</button><button class="btn" data-act="setday" data-d="${ymd(ini)}">Ver el lunes</button></div></section>`;
   } else {
     const m = S.data.menu["s"+wi.sem];
-    if (!m) h += `<div class="empty">${S.ready.has("menu") ? "No hay menú para la semana "+wi.sem+"." : "Cargando el menú…"}</div>`;
+    if (!m && !S.ready.has("menu")) h += `<div class="empty">Cargando el menú…</div>`;
+    else if (!m && !S.data.cambios[ds]) h += `<section class="card"><h3>Hoy no tienes menú</h3><p class="small muted">${hayRecetas() ? "Elige la comida y la cena de hoy, o planifica la semana entera desde Semana." : "Primero añade tus platos en el Recetario. Después podrás elegir la comida y la cena de cada día."}</p><div class="row">${hayRecetas() ? `<button class="btn primary" data-act="dia" data-d="${ds}">Planificar hoy</button><button class="btn" data-act="versem" data-s="${wi.sem}">Ver la semana</button>` : `<button class="btn primary" data-act="go" data-r="recetario">Ir al Recetario</button>`}</div></section>`;
     else {
       const dd = diaDe(ds); const dia = dd.dia || {};
       h += `<div class="chips"><button class="chip" data-act="versem" data-s="${wi.sem}">Semana ${wi.sem} de 4</button>${dd.cambio ? `<span class="chip static warm">Cambiado</span>` : ""}</div>`;
-      h += mealCard("Comida", dia.comida, i < 4 ? "Tupper" : "En casa");
+      h += mealCard("Comida", dia.comida, "");
       h += mealCard("Cena", dia.cena, "");
       h += `<button class="btn" data-act="dia" data-d="${ds}">Cambiar platos de este día</button>`;
     }
@@ -424,11 +428,11 @@ function vMes(){
     else head = `<button class="link" data-act="versem" data-s="${wi.sem}">Semana ${wi.sem} de la rotación</button>`;
     const filas = dias.map(([i,d]) => { const ds = ymd(d); const dd = diaDe(ds); const dia = dd.dia;
       const vacio = `<span class="muted">${dd.wi.fuera ? "Fuera" : "-"}</span>`;
-      return `<tr class="${ds===hoyS?"hoy":""}">${celdaDia(i, d, !!dia, !!dd.cambio)}<td>${dia?slotMini(dia.comida):vacio}</td><td>${dia?slotMini(dia.cena):vacio}</td></tr>`; }).join("");
+      return `<tr class="${ds===hoyS?"hoy":""}">${celdaDia(i, d, planificable(dd), !!dd.cambio)}<td>${dia?slotMini(dia.comida):vacio}</td><td>${dia?slotMini(dia.cena):vacio}</td></tr>`; }).join("");
     if (!wi.antes) algo = true;
     h += `<section class="card" style="padding:10px"><div class="row between" style="padding:0 6px"><b>${fmtCorto(mon)} - ${fmtCorto(sun)}</b>${head}</div><div class="tablewrap"><table class="menu"><thead><tr><th>Día</th><th>Comida</th><th>Cena</th></tr></thead><tbody>${filas}</tbody></table></div></section>`;
   }
-  if (!algo) h += `<div class="empty">Este mes no tiene menú.</div>`;
+  if (!algo) h += `<div class="empty">El menú empieza más adelante.</div>`;
   return h + LEYENDA + AYUDA_DIA;
 }
 /* Calendario mensual en cuadrícula (lunes a domingo), como un calendario de pared. */
@@ -449,7 +453,7 @@ function vCal(){
       cuerpo = linea(c.plato || c.primero, c.plato ? c : null) + linea(ce.plato || ce.primero, ce.plato ? ce : null, "ce");
     }
     const num = `<span class="num">${d.getDate()}${dd.cambio ? `<i class="cdot" title="Cambiado"></i>` : ""}</span>`;
-    celdas += dia ? `<button class="c${ds===hoyS?" hoy":""}" data-act="dia" data-d="${ds}" aria-label="${esc(fmtLargo(d))}">${num}${cuerpo}</button>`
+    celdas += planificable(dd) ? `<button class="c${ds===hoyS?" hoy":""}" data-act="dia" data-d="${ds}" aria-label="${esc(fmtLargo(d))}">${num}${cuerpo}</button>`
                   : `<div class="c${ds===hoyS?" hoy":""}">${num}${cuerpo}</div>`;
   }});
   return MODOS() + cabMes(y, m) + `<div class="cal">${celdas}</div>` + LEYENDA + `<p class="small muted">En cada día, arriba la comida y abajo la cena (en gris). Toca un día para ver el primero y cambiar los platos.</p>`;
@@ -458,17 +462,18 @@ VIEWS.semana = () => {
   if (S.ui.modo === "mes") return vMes();
   if (S.ui.modo === "cal") return vCal();
   const cur = weekInfo(today()); const def = cur.sem || 1; const sem = S.ui.sem || def;
-  const m = S.data.menu["s"+sem]; const mon = proximasFechas(sem);
+  const m0 = S.data.menu["s"+sem]; const m = m0 || { dias: [{},{},{},{},{},{},{}] }; const mon = proximasFechas(sem);
   let h = MODOS() + `<div class="row between"><h2>Semana ${sem}</h2>${mon ? `<span class="muted small">${sem===cur.sem && !cur.antes ? "Esta semana" : "Próxima"}: ${fmtCorto(mon)} - ${fmtCorto(addDays(mon,6))}</span>` : ""}</div>`;
   h += `<div class="chips">${[1,2,3,4].map(n=>`<button class="chip" data-act="sem" data-s="${n}" aria-pressed="${n===sem}">S${n}${n===cur.sem && !cur.antes ? " · ahora" : ""}</button>`).join("")}</div>`;
-  if (!m) return h + `<div class="empty">${S.ready.has("menu") ? "Esta semana aún no tiene menú." : "Cargando…"}</div>`;
+  if (!m0 && !S.ready.has("menu")) return h + `<div class="empty">Cargando…</div>`;
+  if (!m0) h += `<section class="card accent"><h3>Semana ${sem} sin menú</h3><p class="small">${hayRecetas() ? "Toca cada día en la tabla para elegir la comida y la cena. Lo que elijas se repetirá cada cuatro semanas." : "Primero añade tus platos en el Recetario. Después vuelve aquí y toca cada día para elegir la comida y la cena."}</p>${hayRecetas() ? "" : `<button class="btn primary" data-act="go" data-r="recetario">Ir al Recetario</button>`}</section>`;
   const c = contar(sem), o = OBJ();
   h += `<div class="chips">${[["legumbre","Legumbre"],["pescado","Pescado"],["huevo","Huevos"],["blanca","Blanca"],["roja","Roja"]].map(([k,l])=>`<span class="pill ${estadoObj(c[k],o[k])}">${l} ${c[k]}</span>`).join("")}<span class="pill ${c.azul>=1?"good":"bad"}">Azul ${c.azul}</span>${c.nuevo?`<span class="pill new">${c.nuevo} nuevo${c.nuevo>1?"s":""}</span>`:""}</div>`;
   const hoyIdx = (cur.sem === sem && !cur.antes) ? dow(new Date()) : -1;
   h += `<section class="card" style="padding:10px"><div class="tablewrap"><table class="menu"><thead><tr><th>Día</th><th>Comida</th><th>Cena</th></tr></thead><tbody>${(m.dias||[]).map((d,i)=>{
     if (!mon) return `<tr class="${i===hoyIdx?"hoy":""}"><td class="d">${DIAS3[i]}</td><td>${slotMini(d.comida)}</td><td>${slotMini(d.cena)}</td></tr>`;
     const fd = addDays(mon,i); const dd = diaDe(ymd(fd)); const x = dd.dia || d;
-    return `<tr class="${i===hoyIdx?"hoy":""}">${celdaDia(i, fd, !!dd.dia, !!dd.cambio)}<td>${slotMini(x.comida)}</td><td>${slotMini(x.cena)}</td></tr>`; }).join("")}</tbody></table></div>${LEYENDA}${mon ? AYUDA_DIA : ""}</section>`;
+    return `<tr class="${i===hoyIdx?"hoy":""}">${celdaDia(i, fd, planificable(dd), !!dd.cambio)}<td>${slotMini(x.comida)}</td><td>${slotMini(x.cena)}</td></tr>`; }).join("")}</tbody></table></div>${LEYENDA}${mon ? AYUDA_DIA : ""}</section>`;
   if (m.fruta) h += `<section class="card"><div class="eyebrow">Fruta de la semana</div><p>${esc(m.fruta)}</p></section>`;
   const b = S.data.batch["s"+sem];
   if (b) h += batchHtml(b);
@@ -519,6 +524,7 @@ VIEWS.compra = () => {
   // por defecto, la lista más reciente que tenga cosas sin tachar
   if (!S.ui.lista){ const pend = listas.filter(([l])=>items.some(x=>x.lista===l && !x.hecho)); if (pend.length) lista = pend[pend.length-1][0]; }
   let h = `<div class="row between"><h2>Compra</h2></div>`;
+  { const g = semanaCompra(); h += `<section class="card"><div class="eyebrow">Lista desde el menú</div><p class="small muted">${g ? `Junta los ingredientes de tus platos de la semana ${g.sem} (${fmtCorto(g.mon)} - ${fmtCorto(addDays(g.mon,6))}) y quita lo que ya tienes en la despensa.` : "Cuando tengas menú, aquí podrás generar la lista con sus ingredientes."}</p>${g ? `<button class="btn primary" data-act="gen-compra">Generar la lista de la semana</button>` : ""}</section>`; }
   if (listas.length > 1) h += `<div class="hscroll">${listas.map(([l,n])=>`<button class="chip" data-act="lista" data-v="${esc(l)}" aria-pressed="${l===lista}">${esc(n)}</button>`).join("")}</div>`;
   if (faltan.length) h += `<section class="card"><div class="eyebrow">Básicos que se acaban</div><div class="list">${faltan.map(x=>`<div class="item"><span class="grow"><span class="t">${esc(x.nombre)}</span></span><button class="estado ${x.estado}" data-act="desp-estado" data-id="${esc(x.id)}">${x.estado==="falta"?"Falta":"Poco"}</button></div>`).join("")}</div><p class="small muted">Toca para marcar que ya lo tienes.</p></section>`;
   const mine = items.filter(x=>x.lista===lista);
@@ -635,6 +641,7 @@ VIEWS.cuenta = () => {
   const imp = S.ui.imp; const im = S.ui.impMsg;
   return `<button class="link" data-act="go" data-r="mas">‹ Más</button><h2>Cuenta y datos</h2>
   <section class="card"><div class="eyebrow">Sesión</div><p style="margin:0">${u.displayName ? `<b>${esc(u.displayName)}</b><br>` : ""}<span class="small muted">${esc(u.email || "")}</span></p><p class="small muted">Tus datos son solo tuyos. Cada persona que entra con su cuenta tiene su propio menú, recetario y gastos.</p><button class="btn" data-act="salir">Cerrar sesión</button></section>
+  <section class="card"><div class="eyebrow">Ajustes</div><form class="grid" data-form="ajustes"><label class="f">Presupuesto mínimo (€/mes)<input type="number" name="min" min="0" step="1" inputmode="numeric" value="${esc((cfg().rango||{}).min ?? 250)}"></label><label class="f">Presupuesto máximo (€/mes)<input type="number" name="max" min="0" step="1" inputmode="numeric" value="${esc((cfg().rango||{}).max ?? 350)}"></label><label class="f full">El menú de 4 semanas empieza el lunes<input type="date" name="inicio" value="${esc(ymd(inicio()))}"></label><button class="btn primary full">Guardar ajustes</button></form></section>
   <section class="card"><div class="eyebrow">Descargar mis datos</div><p class="small muted">Guarda todos tus datos (${n} registros) en un archivo. Sirve de copia de seguridad, para pasárselo a Claude o para que otra persona empiece con tu recetario.</p><button class="btn primary" data-act="exportar">Descargar archivo</button></section>
   <section class="card"><div class="eyebrow">Importar datos</div><p class="small muted">Carga un archivo de COMIDAS y elige qué partes traer. Lo que tenga el mismo nombre se sustituye por lo del archivo.</p>
     <label class="btn block" for="imp-file">${imp ? "Cambiar de archivo" : "Elegir archivo"}</label><input type="file" id="imp-file" accept=".json,application/json" hidden>
@@ -681,6 +688,39 @@ async function escribirLotes(ops){
     await b.commit();
   }
 }
+
+/* ---------- lista de la compra a partir del menú ---------- */
+function semanaCompra(){ const cur = weekInfo(today()); const sem = cur.sem || 1; const mon = cur.sem && !cur.fuera ? cur.mon : proximasFechas(sem); return mon ? { sem, mon } : null; }
+function seccionDe(t){
+  const s = slug(t).replace(/-/g, " ");
+  const has = ws => ws.some(w => s.includes(w));
+  if (has(["congelad"])) return "Congelados";
+  if (has(["lata","bote","conserva"])) return "Despensa";
+  if (has(["salmon","merluza","bacalao","gamba","langostino","calamar","sepia","caballa","sardina","pescado","mejillon","lubina","dorada","boqueron","rape","atun fresco"])) return "Pescado";
+  if (has(["pollo","pavo","ternera","cerdo","lomo","solomillo","carne","hamburguesa","salchicha","jamon","chorizo","conejo","contramuslo","pechuga","bacon","higado","cordero"])) return "Carne";
+  if (has(["huevo","leche","yogur","queso","nata","mantequilla","kefir","requeson"])) return "Huevos y lácteos";
+  if (has(["tomate","cebolla","ajo","pimiento","calabacin","berenjena","zanahoria","patata","puerro","lechuga","espinaca","brocoli","coliflor","champinon","pepino","aguacate","limon","lima","naranja","manzana","platano","pera","fresa","kiwi","calabaza","judia verde","esparrago","rucula","perejil","cilantro","albahaca","boniato","apio","col","fruta","verdura","mandarina","uva","melon","sandia","jengibre","cebolleta"])) return "Fruta y verdura";
+  return "Despensa";
+}
+async function generarCompra(){
+  const g = semanaCompra(); if (!g){ toast("No hay ninguna semana con menú"); return; }
+  const ids = [];
+  for (let i = 0; i < 7; i++){ const dd = diaDe(ymd(addDays(g.mon, i))); const d = dd.dia; if (!d) continue;
+    [d.comida && d.comida.primero, d.comida && d.comida.plato, d.cena && d.cena.plato].forEach(id => { if (id && !ids.includes(id)) ids.push(id); }); }
+  if (!ids.length){ toast("Esta semana todavía no tiene platos"); return; }
+  const casa = Object.values(S.data.despensa).filter(x => (x.estado || "hay") === "hay").map(x => slug(x.nombre || "").replace(/-/g, " ")).filter(x => x.length >= 4);
+  const vistos = new Set(), items = [];
+  ids.forEach(id => { const r = R(id); const ing = Array.isArray(r.ingredientes) ? r.ingredientes.filter(Boolean) : [];
+    if (!ing.length){ items.push({ nombre: "Ingredientes de " + (r.nombre || id), seccion: "Otros", nota: "La receta no tiene ingredientes apuntados" }); return; }
+    ing.forEach(x => { const k = slug(x); if (vistos.has(k)) return; vistos.add(k);
+      const s = k.replace(/-/g, " "); if (casa.some(c => s.includes(c))) return;
+      items.push({ nombre: String(x), seccion: seccionDe(x), nota: r.nombre || "" }); }); });
+  const lista = "menu-" + ymd(g.mon), listaNombre = `Semana ${g.sem} · ${fmtCorto(g.mon)}`;
+  const ops = Object.entries(S.data.compra).filter(([, x]) => x.lista === lista && x.bloque === "Del menú" && !x.hecho).map(([id]) => ({ c: "compra", id, del: true }));
+  items.forEach((x, n) => ops.push({ c: "compra", id: "m" + Date.now().toString(36) + n, d: Object.assign({ cantidad: "", hecho: false, lista, listaNombre, bloque: "Del menú", orden: n + 1 }, x) }));
+  try{ await escribirLotes(ops); S.ui.lista = lista; render(); toast(items.length ? `${items.length} cosas en la lista` : "Ya tienes todo en la despensa"); }
+  catch(e){ toast("No se ha podido crear la lista. Inténtalo de nuevo."); }
+}
 function idValido(id){ return typeof id === "string" && id && id !== "." && id !== ".." && !id.includes("/") && !/^__.*__$/.test(id); }
 
 /* ---------- hoja de un día: cambiar comida y cena ---------- */
@@ -704,11 +744,11 @@ function sheetDia(ds){
   const cab = `<div class="grab"></div><div><div class="eyebrow">Cambiar platos</div><h2>${fmtLargo(d)}</h2></div>`;
   if (wi.antes) return cab + `<p class="muted">El menú empieza el ${fmtLargo(inicio()).toLowerCase()}.</p><button class="btn" data-act="cerrar">Cerrar</button>`;
   if (wi.fuera) return cab + `<p class="muted">Este día está marcado como fuera de casa.</p><button class="btn" data-act="cerrar">Cerrar</button>`;
-  if (!dd.dia) return cab + `<p class="muted">Esta semana no tiene menú.</p><button class="btn" data-act="cerrar">Cerrar</button>`;
-  const c = dd.dia.comida || {}, ce = dd.dia.cena || {};
+  if (!hayRecetas()) return cab + `<p class="muted">Todavía no tienes platos. Añade tus recetas en el Recetario y vuelve aquí para elegir la comida y la cena.</p><div class="row"><button class="btn primary" data-act="ir-recetario">Ir al Recetario</button><button class="btn" data-act="cerrar">Cerrar</button></div>`;
+  const dia0 = dd.dia || {}; const c = dia0.comida || {}, ce = dia0.cena || {}; const semVacia = !S.data.menu["s"+wi.sem];
   return cab + `${dd.cambio ? `<p class="small" style="color:var(--warn)">Este día ya tiene un cambio respecto a la rotación.</p>` : ""}
   <form class="slotbox" data-form="dia" data-d="${ds}">
-    <section class="card"><div class="row between"><h3>Comida</h3><span class="pill">${i < 4 ? "Tupper" : "En casa"}</span></div>
+    <section class="card"><div class="row between"><h3>Comida</h3></div>
       ${verPlatos(c) ? `<div class="now">${verPlatos(c)}</div>` : ""}
       <label class="f">Primero (opcional)<select name="c1" id="dia-c1">${opcionesRecetas(c.primero || "", ["primero","comida","cena"], "Sin primero")}</select></label>
       <label class="f">Plato<select name="c2" id="dia-c2" required>${opcionesRecetas(c.plato || "", ["comida","primero","cena"], c.plato ? null : "Elige un plato")}</select></label>
@@ -718,8 +758,8 @@ function sheetDia(ds){
       <label class="f">Plato<select name="ce" id="dia-ce" required>${opcionesRecetas(ce.plato || "", ["cena","primero","comida"], ce.plato ? null : "Elige un plato")}</select></label>
     </section>
     <fieldset class="card" style="margin:0"><legend class="eyebrow" style="padding:0 4px">¿Dónde se cambia?</legend>
-      <label class="radio"><input type="radio" name="scope" value="dia" checked> <span>Solo este día<br><span class="small muted">El ${fmtLargo(d).toLowerCase()}. La rotación no cambia.</span></span></label>
-      <label class="radio"><input type="radio" name="scope" value="rot"> <span>En la rotación<br><span class="small muted">Todos los ${DIAS[i].toLowerCase()} de la semana ${wi.sem}, a partir de ahora.</span></span></label>
+      <label class="radio"><input type="radio" name="scope" value="dia" ${semVacia ? "" : "checked"}> <span>Solo este día<br><span class="small muted">El ${fmtLargo(d).toLowerCase()}. La rotación no cambia.</span></span></label>
+      <label class="radio"><input type="radio" name="scope" value="rot" ${semVacia ? "checked" : ""}> <span>En la rotación<br><span class="small muted">Todos los ${DIAS[i].toLowerCase()} de la semana ${wi.sem}, a partir de ahora.</span></span></label>
     </fieldset>
     <button class="btn primary block">Guardar cambio</button>
     ${dd.cambio ? `<button type="button" class="btn block" data-act="dia-reset" data-d="${ds}">Volver al menú de la rotación</button>` : ""}
@@ -856,6 +896,8 @@ const ACT = {
     try{ await S.auth.sendPasswordResetEmail(email); loginMsg("Te he enviado un correo para cambiar la contraseña. Mira también en spam.", true); } catch(e){ loginMsg(authErr(e)); } },
   salir: async b => { if (!armed(b)) return; S.ui.route = "hoy"; history.replaceState(null, "", "#hoy"); await S.auth.signOut(); },
   exportar: async () => { try{ await S.downloads.save({ filename: `comidas-datos-${today()}.json`, data: new Blob([JSON.stringify(datosExport(), null, 1)], { type: "application/json" }) }); toast("Archivo descargado"); } catch(e){ toast("No se ha podido descargar el archivo."); } },
+  "gen-compra": () => generarCompra(),
+  "ir-recetario": () => { closeSheet(); go("recetario"); },
   "borrar-todo": async b => { if (!armed(b)) return; const ops = []; COLS.forEach(c => Object.keys(S.data[c]).forEach(id => ops.push({ c, id, del: true })));
     try{ await escribirLotes(ops); toast("Datos borrados"); go("hoy"); } catch(e){ toast("No se ha podido borrar. Inténtalo de nuevo."); } },
   go: b => go(b.dataset.r),
@@ -965,6 +1007,9 @@ document.addEventListener("input", e => { if (e.target.id === "q"){ S.ui.q = e.t
 document.addEventListener("keydown", e => { if (e.key === "Escape" && S.ui.sheet) closeSheet(); });
 
 const FORMS = {
+  async ajustes(f){ const fd = new FormData(f); const min = Number(fd.get("min")), max = Number(fd.get("max")); let ini = String(fd.get("inicio") || "");
+    if (!(min >= 0) || !(max > 0) || min > max){ toast("Revisa el presupuesto"); return; } if (ini) ini = ymd(mondayOf(parse(ini)));
+    await W(S.db.doc("config/general").set(Object.assign({}, cfg(), { rango: { min, max } }, ini ? { inicio: ini } : {})), "Ajustes guardados"); },
   async login(f){ const { email, pass } = leerLogin(); if (!email || !pass){ loginMsg("Escribe tu correo y tu contraseña."); return; }
     try{ await S.auth.signInWithEmailAndPassword(email, pass); S.ui.loginMsg = null; } catch(e){ loginMsg(authErr(e)); } },
   async importar(f){
@@ -999,18 +1044,17 @@ const FORMS = {
     const ds = f.dataset.d, fd = new FormData(f), i = dow(parse(ds));
     const c1 = String(fd.get("c1") || ""), c2 = String(fd.get("c2") || ""), ce = String(fd.get("ce") || "");
     if (!c2 || !ce){ toast("Elige el plato de la comida y el de la cena"); return; }
-    const dd = diaDe(ds); if (!dd.dia){ closeSheet(); return; }
+    const dd = diaDe(ds); if (!planificable(dd)){ closeSheet(); return; }
     const igualC = s => !!s && (s.primero || "") === c1 && s.plato === c2;
     const nuevaC = c1 ? { primero: c1, plato: c2 } : { plato: c2 };
     const nuevaCe = { plato: ce };
     if (fd.get("scope") === "rot"){
       const sem = dd.wi.sem, m = S.data.menu["s"+sem];
-      if (!m || !Array.isArray(m.dias)){ toast("No encuentro esa semana de la rotación"); return; }
-      const dias = m.dias.map(x => Object.assign({}, x));
+      const dias = (m && Array.isArray(m.dias) && m.dias.length === 7 ? m.dias : [{},{},{},{},{},{},{}]).map(x => Object.assign({}, x));
       const cur = dias[i] || {};
       // si el slot no cambia, se conserva tal cual (con su nota); si cambia, se quita la nota y el conteo del plato anterior
       dias[i] = Object.assign({}, cur, { comida: igualC(cur.comida) ? cur.comida : nuevaC, cena: (cur.cena && cur.cena.plato === ce) ? cur.cena : nuevaCe });
-      const ok = await W(S.db.doc("menu/s"+sem).update({ dias }), `Cambiado en la semana ${sem} de la rotación`);
+      const ok = await W(S.db.doc("menu/s"+sem).set(Object.assign({ semana: sem }, m || {}, { dias })), `Guardado en la semana ${sem} de la rotación`);
       if (ok && S.data.cambios[ds]) await W(S.db.doc("cambios/"+ds).delete());
       if (ok) closeSheet();
       return;
